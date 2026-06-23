@@ -14,21 +14,51 @@
     />
 
     <link rel="stylesheet" href="https://unpkg.com/aos@2.3.4/dist/aos.css" />
+
+    <style>
+      /* --- SISTEM PENGUNCI SCROLL (TAMPILAN AWAL SEPERTI GAMBAR) --- */
+      body.no-scroll {
+        overflow: hidden;
+        height: 100vh;
+      }
+
+      .hero {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100vh;
+        z-index: 9999;
+        transition:
+          transform 1.2s cubic-bezier(0.77, 0, 0.175, 1),
+          opacity 1.2s ease;
+      }
+
+      .hero.opened {
+        transform: translateY(-100%);
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      .music-btn {
+        display: none; /* Disembunyikan sebelum undangan dibuka */
+      }
+    </style>
   </head>
 
-  <body>
+  <body class="no-scroll">
     <audio id="bgMusic" loop>
       <source src="audio/musik.mpeg" type="audio/mpeg" />
     </audio>
 
     <div id="musicBtn" class="music-btn" onclick="toggleMusic()">🎵</div>
 
-    <section class="hero">
+    <section class="hero" id="heroCover">
       <div class="overlay">
         <h3>The Wedding Of</h3>
         <h1>Astrid Hilqi Anandita & Miftahuddin</h1>
         <p>Minggu, 27 Desember 2027</p>
-        <a href="#acara" class="btn" onclick="playMusicFirstTime()">
+        <a href="javascript:void(0)" class="btn" onclick="bukaUndangan()">
           Lihat Undangan
         </a>
       </div>
@@ -128,24 +158,42 @@
     <section class="rsvp" data-aos="fade-up">
       <h2>Konfirmasi Kehadiran</h2>
 
-      <form
-        onsubmit="
-          event.preventDefault();
-          alert('Terima kasih atas konfirmasinya!');
-        "
-      >
-        <input type="text" placeholder="Nama Lengkap" required />
+      <form id="rsvpForm">
+        <input
+          type="text"
+          id="rsvpNama"
+          name="Nama"
+          placeholder="Nama Lengkap"
+          required
+        />
 
-        <select required>
+        <select id="rsvpStatus" name="Kehadiran" required>
           <option value="">Konfirmasi Kehadiran</option>
           <option value="Hadir">Hadir</option>
           <option value="Tidak Hadir">Tidak Hadir</option>
         </select>
 
-        <textarea placeholder="Ucapan & Doa" required></textarea>
+        <textarea
+          id="rsvpPesan"
+          name="Pesan"
+          placeholder="Ucapan & Doa"
+          required
+        ></textarea>
 
-        <button type="submit">Kirim</button>
+        <button type="submit" id="btnKirim">Kirim</button>
       </form>
+
+      <div
+        id="statusNotif"
+        style="
+          display: none;
+          margin-top: 20px;
+          padding: 15px;
+          border-radius: 5px;
+          font-weight: 500;
+          text-align: center;
+        "
+      ></div>
     </section>
 
     <footer>
@@ -162,14 +210,14 @@
     <script src="https://unpkg.com/aos@2.3.4/dist/aos.js"></script>
 
     <script>
+      // 1. Inisialisasi Animasi AOS
       AOS.init({
         duration: 1500,
         once: true,
       });
 
-      // Hitung Mundur Waktu
+      // 2. Logika Hitung Mundur Waktu (Countdown)
       const countDate = new Date("Dec 27, 2027 09:00:00").getTime();
-
       const timerInterval = setInterval(function () {
         let now = new Date().getTime();
         let gap = countDate - now;
@@ -197,19 +245,26 @@
       const music = document.getElementById("bgMusic");
       const musicBtn = document.getElementById("musicBtn");
 
-      // Karena cover dihapus, musik otomatis berputar saat pengunjung berinteraksi pertama kali (klik "Lihat Undangan")
-      function playMusicFirstTime() {
-        music
-          .play()
-          .catch((error) =>
-            console.log(
-              "Autoplay diblokir browser, butuh interaksi klik.",
-              error,
-            ),
-          );
+      // 3. Fungsi Membuka Undangan & Play Musik
+      function bukaUndangan() {
+        document.body.classList.remove("no-scroll");
+
+        const heroCover = document.getElementById("heroCover");
+        heroCover.classList.add("opened");
+
+        musicBtn.style.display = "flex";
+        musicBtn.style.animation = "spin 4s linear infinite";
+
+        music.play().catch((error) => {
+          console.log("Autoplay musik diblokir oleh browser.", error);
+        });
+
+        document.getElementById("acara").scrollIntoView({
+          behavior: "smooth",
+        });
       }
 
-      // Fungsi pasang/jeda tombol musik melayang
+      // 4. Fungsi Mengontrol Tombol Play/Pause Musik
       function toggleMusic() {
         if (music.paused) {
           music.play();
@@ -221,6 +276,67 @@
           musicBtn.style.animation = "none";
         }
       }
+
+      // 5. LOGIKA AJAX FORMSPREE TERBARU (MENGGUNAKAN ID ANDA: xqevazej)
+      document
+        .getElementById("rsvpForm")
+        .addEventListener("submit", function (event) {
+          event.preventDefault();
+
+          const form = event.target;
+          const button = document.getElementById("btnKirim");
+          const notif = document.getElementById("statusNotif");
+
+          // KODE ID FORMSPREE ASLI ANDA
+          const formspreeID = "xqevazej";
+
+          button.disabled = true;
+          button.innerText = "Mengirim...";
+          notif.style.display = "none";
+
+          fetch(`https://formspree.io/f/${formspreeID}`, {
+            method: "POST",
+            body: new FormData(form),
+            headers: {
+              Accept: "application/json",
+            },
+          })
+            .then((response) => {
+              if (response.ok) {
+                // Notifikasi Berhasil Terkirim
+                notif.style.backgroundColor = "#d4edda";
+                notif.style.color = "#155724";
+                notif.innerHTML =
+                  "✅ Konfirmasi Anda telah berhasil terkirim! Terima kasih.";
+                notif.style.display = "block";
+
+                form.reset();
+                button.disabled = false;
+                button.innerText = "Terkirim!";
+              } else {
+                // Notifikasi Jika Terjadi Error
+                notif.style.backgroundColor = "#f8d7da";
+                notif.style.color = "#721c24";
+                notif.innerHTML =
+                  "❌ Gagal mengirim. Pastikan email Anda di Formspree sudah terverifikasi.";
+                notif.style.display = "block";
+
+                button.disabled = false;
+                button.innerText = "Kirim";
+              }
+            })
+            .catch((error) => {
+              // Notifikasi Jika Koneksi Internet Error
+              notif.style.backgroundColor = "#f8d7da";
+              notif.style.color = "#721c24";
+              notif.innerHTML =
+                "❌ Terjadi kesalahan jaringan. Silakan coba lagi.";
+              notif.style.display = "block";
+
+              button.disabled = false;
+              button.innerText = "Kirim";
+            });
+        });
     </script>
   </body>
 </html>
